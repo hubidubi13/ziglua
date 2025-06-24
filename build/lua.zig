@@ -12,7 +12,7 @@ pub const Language = enum {
     luau,
 };
 
-pub fn configure(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, upstream: *Build.Dependency, lang: Language, shared: bool) *Step.Compile {
+pub fn configure(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.OptimizeMode, upstream: *Build.Dependency, lang: Language, shared: bool, lua_user_h: ?Build.LazyPath) *Step.Compile {
     const version: std.SemanticVersion = switch (lang) {
         .lua51 => .{ .major = 5, .minor = 1, .patch = 5 },
         .lua52 => .{ .major = 5, .minor = 2, .patch = 4 },
@@ -55,6 +55,8 @@ pub fn configure(b: *Build, target: Build.ResolvedTarget, optimize: std.builtin.
 
         // Build as DLL for windows if shared
         if (target.result.os.tag == .windows and shared) "-DLUA_BUILD_AS_DLL" else "",
+
+        if (lua_user_h) |user_h| b.fmt("-DLUA_USER_H=\"{}\"", .{user_h.getPath3(b, null)}) else "",
     };
 
     const lua_source_files = switch (lang) {

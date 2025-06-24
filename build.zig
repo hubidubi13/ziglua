@@ -18,9 +18,22 @@ pub fn build(b: *Build) void {
     const lang = b.option(Language, "lang", "Lua language version to build") orelse .lua54;
     const shared = b.option(bool, "shared", "Build shared library instead of static") orelse false;
     const luau_use_4_vector = b.option(bool, "luau_use_4_vector", "Build Luau to use 4-vectors instead of the default 3-vector.") orelse false;
+    var lua_user_h = b.option(Build.LazyPath, "lua_user_h", "Lazy path to user supplied c header file") orelse null;
+
+    // Expand relative path from cli argument
+    if (lua_user_h) |user_h| {
+        switch (user_h) {
+            .cwd_relative => |path| lua_user_h = b.path(path),
+            else => {},
+        }
+    }
 
     if (lang == .luau and shared) {
         std.debug.panic("Luau does not support compiling or loading shared modules", .{});
+    }
+
+    if (lua_user_h != null and (lang == .luajit or lang == .luau)) {
+        std.debug.panic("Only basic lua supports a user provided header file", .{});
     }
 
     // Zig module
@@ -43,7 +56,7 @@ pub fn build(b: *Build) void {
         const lib = switch (lang) {
             .luajit => luajit_setup.configure(b, target, optimize, upstream, shared),
             .luau => luau_setup.configure(b, target, optimize, upstream, luau_use_4_vector),
-            else => lua_setup.configure(b, target, optimize, upstream, lang, shared),
+            else => lua_setup.configure(b, target, optimize, upstream, lang, shared, lua_user_h),
         };
 
         // Expose the Lua artifact, and get an install step that header translation can refer to
